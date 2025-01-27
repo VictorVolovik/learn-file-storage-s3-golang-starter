@@ -1,10 +1,10 @@
 package main
 
 import (
-	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/google/uuid"
@@ -30,13 +30,13 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	videoMetadata, err := cfg.db.GetVideo(videoID)
+	video, err := cfg.db.GetVideo(videoID)
 	if err != nil {
 		respondWithError(w, http.StatusNotFound, "Could not find the video.", err)
 		return
 	}
 
-	if userID != videoMetadata.UserID {
+	if userID != video.UserID {
 		respondWithError(w, http.StatusForbidden, "You do not have permission to edit this video.", nil)
 		return
 	}
@@ -59,20 +59,28 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	fileData, err := io.ReadAll(file)
+	assetPath := getAssetPath(videoID, mediaType)
+	assetDiskPath := cfg.getAssetDiskPath(assetPath)
+
+	dstFile, err := os.Create(assetDiskPath)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Unable to read form file", err)
+		respondWithError(w, http.StatusInternalServerError, "Unable to create file on server", err)
+		return
+	}
+	_, err = io.Copy(dstFile, file)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Unable to save file", err)
 		return
 	}
 
-	fileDataUrl := fmt.Sprintf("data:%s;base64,%s", mediaType, base64.StdEncoding.EncodeToString(fileData))
+	thumbnailUrl := cfg.getAssetUrl(assetPath)
+	video.ThumbnailURL = &thumbnailUrl
 
-	videoMetadata.ThumbnailURL = &fileDataUrl
-	err = cfg.db.UpdateVideo(videoMetadata)
+	err = cfg.db.UpdateVideo(video)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Unable to update video", err)
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, videoMetadata)
+	respondWithJSON(w, http.StatusOK, video)
 }

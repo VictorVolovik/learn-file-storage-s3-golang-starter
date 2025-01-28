@@ -44,7 +44,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 
 	fmt.Println("uploading thumbnail for video", videoID, "by user", userID)
 
-	const maxMemory = 10 << 20
+	const maxMemory = 10 << 20 // 10 mb
 	r.ParseMultipartForm(maxMemory)
 
 	file, header, err := r.FormFile("thumbnail")
@@ -78,8 +78,8 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	thumbnailUrl := cfg.getAssetUrl(assetPath)
-	video.ThumbnailURL = &thumbnailUrl
+	thumbnailURL := cfg.getAssetURL(assetPath)
+	video.ThumbnailURL = &thumbnailURL
 
 	err = cfg.db.UpdateVideo(video)
 	if err != nil {

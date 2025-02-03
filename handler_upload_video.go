@@ -123,7 +123,7 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	videoURL := cfg.getObjectURL(objKey)
+	videoURL := cfg.getVideoLocation(objKey)
 	video.VideoURL = &videoURL
 	err = cfg.db.UpdateVideo(video)
 	if err != nil {
@@ -131,6 +131,11 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, video)
+	video, err = cfg.dbVideoToSignedVideo(video)
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, "Couldn't return signed video", err)
+		return
+	}
 
+	respondWithJSON(w, http.StatusOK, video)
 }
